@@ -15,6 +15,8 @@ export default {
     const incoming = new URL(request.url);
     if (!incoming.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
 
+    if (!['GET', 'HEAD', 'POST', 'OPTIONS'].includes(request.method)) return Response.json({ detail: 'Method not allowed' }, { status: 405, headers: { Allow: 'GET, HEAD, POST, OPTIONS', 'Cache-Control': 'no-store' } });
+
     let origin: URL;
     try {
       origin = new URL(env.API_ORIGIN || '');
@@ -39,6 +41,7 @@ export default {
         headers,
         body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
         redirect: 'manual',
+        signal: AbortSignal.timeout(15000),
       });
       // API URLs must respond directly; do not forward credentials through redirects.
       if (response.status >= 300 && response.status < 400) return unavailable(502);

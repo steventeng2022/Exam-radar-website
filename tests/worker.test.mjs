@@ -23,6 +23,7 @@ test('GET preserves API path and query, strips cookies and disables API caching'
   globalThis.fetch = async (target, init) => {
     assert.equal(target.href, 'https://backend.example/api/exams?grade=11');
     assert.equal(init.headers.get('Cookie'), null);
+    assert.ok(init.signal instanceof AbortSignal);
     return Response.json({ items: [] }, { headers: { 'Set-Cookie': 'session=x' } });
   };
   const response = await worker.fetch(new Request('https://website.example/api/exams?grade=11', {
@@ -31,6 +32,12 @@ test('GET preserves API path and query, strips cookies and disables API caching'
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Set-Cookie'), null);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
+});
+
+test('unsupported API methods fail before contacting upstream', async () => {
+  const response = await worker.fetch(new Request('https://website.example/api/exams', { method: 'DELETE' }), { ASSETS: assets, API_ORIGIN: 'https://backend.example' });
+  assert.equal(response.status, 405);
+  assert.ok(response.headers.get('Allow').includes('POST'));
 });
 
 test('admin POST preserves bearer token and body', async (t) => {
